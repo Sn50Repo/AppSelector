@@ -1,0 +1,1 @@
+#define kPrefsPlistPath @"/var/mobile/Library/Preferences/com.kayfam.appselector.plist"
