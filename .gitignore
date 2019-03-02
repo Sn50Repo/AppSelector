@@ -3,3 +3,4 @@
 control
 Makefile
 *.deb
+.theos/

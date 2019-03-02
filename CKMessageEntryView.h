@@ -15,5 +15,7 @@
 
 	- (CKBrowserSwitcherFooterView*) appStrip;
 
+	- (CKEntryViewButton*) browserButton;
 	- (void) browserButtonTapped:(id)arg1;
+	- (void) setBrowserButton:(CKEntryViewButton*)arg1;
 @end

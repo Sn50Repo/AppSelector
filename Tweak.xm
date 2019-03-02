@@ -1,23 +1,42 @@
 #import "CKMessageEntryView.h"
 #import <AudioToolbox/AudioToolbox.h>
 #import "AppSelector.h"
+#import "CKBrowserPluginCell.h"
 
-static BOOL openStrip = false;
-static BOOL stripOpen = false;
-static BOOL appOpen = false;
+static BOOL openStrip;
+static BOOL stripOpen;
+static BOOL appOpen;
 
-static BOOL openWhenDown = false;
+static BOOL openWhenDown;
 
-static BOOL pressed = false;
+static BOOL pressed;
 
-static NSInteger appSection = 0;
-static NSInteger appId = 0;
+static NSInteger appSection;
+static NSInteger appId;
 
 static UIColor *defaultColor;
 
+// -- v1.0.2 - fixed version issue (http://redd.it/2xmdng) --
+
 // issue: opening app drawer, then beginning to type then opening an app fucks everything up
+// possible fix: check if user is typing, if so hide it
+
+// issue: Quick Reply doesn't function (no clue why)
 
 // --
+
+static void initTweak () {
+	openStrip = false;
+	stripOpen = false;
+	appOpen = false;
+
+	openWhenDown = false;
+
+	pressed = false;
+
+	appSection = 0;
+	appId = 0;
+}
 
 // static void loadQuickSelect () {
 // 	NSDictionary *settings = [NSMutableDictionary dictionaryWithContentsOfFile:kPrefsPlistPath];
@@ -41,26 +60,44 @@ static UIColor *defaultColor;
 - (void) layoutSubviews {
 	%orig;
 
+	// Resets defaultColor when appStrip is nil. This is used for when the user switches chats and defaultColor is already set
 	if ([self appStrip] == nil && defaultColor != nil) {
 		defaultColor = nil;
 	}
 
+	// Setup
 	if (defaultColor == nil) {
 		[self browserButtonTapped:self.browserButton];
 	}
 
+	// Called when user swipes down with app strip still open
 	if (![self isKeyboardVisible] && stripOpen && !appOpen && !openWhenDown) {
 		[self browserButtonTapped:self.browserButton];
 	}
 
+	// Called when app strip is open and an app is selected
 	if (stripOpen && appOpen) {
 		[self browserButtonTapped:self.browserButton];
 	}
+
+	// -- possible code to change image --
+	// issue: crashes when trying to set the image of the browserButton to newImage, but works fine when setting it to nil
+	// [[cell browserImage] image]] returns a CIImage but converting it to UIImage doesnt seem to fix it
+	// if ([self appStrip] != nil) {
+	// 	NSIndexPath *appIndex = [[NSIndexPath indexPathForRow:appId inSection:appSection] retain];
+	// 	CKBrowserPluginCell *cell = [[self appStrip] collectionView:[[self appStrip] collectionView] cellForItemAtIndexPath:appIndex];
+	// 	if ([cell browserImage] != nil) {
+	// 		//self.backgroundColor = [UIColor redColor];
+	// 		if ([self browserButton] != nil) {
+	// 			UIImage *newImage = [[UIImage alloc] initWithCIImage:[[cell browserImage] image]];
+	// 			[self.browserButton setImage:newImage forState:UIControlStateNormal];
+	// 		}
+	// 	}
+	// }
 }
 
 - (void) browserButtonTapped:(id)arg1 {
 	// Handle auto closing App Drawer when selecting an app
-	// -- v1.0.1 - fixed issue where app crashes when keyboard is hidden --
 	if (stripOpen && appOpen) {
 		stripOpen = false;
 		appOpen = false;
@@ -89,13 +126,7 @@ static UIColor *defaultColor;
 			stripOpen = false;
 			openWhenDown = false;
 		} else {
-			// -- v1.0.1 - fixes appStrip being nil when changing contacts --
-			// issue: causes graphical bugs
-			if ([self appStrip] == nil) {
-				%orig;
-				%orig;
-			}
-
+			// IDK what fixed that issue, because that 'fix' was commented out and it was still fixed
 			if ([[self.browserButton ckTintColor] isEqual:defaultColor]) {
 				NSIndexPath *appIndex = [[NSIndexPath indexPathForRow:appId inSection:appSection] retain];
 				[[self appStrip] collectionView:[[self appStrip] collectionView] didSelectItemAtIndexPath:appIndex];
@@ -105,21 +136,14 @@ static UIColor *defaultColor;
 		}
 	}
 }
-
-// - (void) setShowAppStrip:(bool)arg1 animated:(bool)arg2 completion:(id)arg3 {
-// 	if (appOpen) {
-// 		%orig(false, true, nil);
-// 		self.backgroundColor = [UIColor redColor];
-// 		appOpen = false;
-// 		return;
-// 	}
-// 	%orig;
-// }
 %end
 
 %hook CKEntryViewButton
 - (void) touchesMoved:(id)arg1 withEvent:(id)arg2 {
 	%orig;
+
+	// -- v1.0.2 - removed force touch from camera button
+	if ([self entryViewButtonType] != 2) { return; }// App Button
 
 	UITouch *touch = [arg1 anyObject];
 
@@ -131,10 +155,11 @@ static UIColor *defaultColor;
 		pressed = true;
 		AudioServicesPlaySystemSound(1519);
 		if (!stripOpen && [[self ckTintColor] isEqual:defaultColor]) openStrip = true;
+		// for reference: camera button id
+		//else if ([self entryViewButtonType] == 0) { } // Camera Button
 	}
 }
 
-// -- v1.0.1 - fixed haptic feedback from fritzing --
 - (void) touchesEnded:(id)arg1 withEvent:(id)arg2 {
 	%orig;
 	pressed = false;
@@ -157,3 +182,13 @@ static UIColor *defaultColor;
 	}
 }
 %end
+
+%ctor {
+	@autoreleasepool {
+		NSString *bundleId = NSBundle.mainBundle.bundleIdentifier;
+
+		if ([bundleId isEqualToString:@"com.apple.MobileSMS"]) {
+			initTweak();
+		}
+	}
+}
