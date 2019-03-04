@@ -36,6 +36,10 @@ static void initTweak () {
 
 	appSection = 0;
 	appId = 0;
+
+	CFPreferencesSetAppValue(CFSTR("AppStripEnabled"), kCFBooleanFalse, CFSTR("com.apple.MobileSMS"));
+	CFPreferencesAppSynchronize(CFSTR("com.apple.MobileSMS"));
+	CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(), CFSTR("com.apple.MobileSMS.AppStripEnabled"), NULL, NULL, TRUE);
 }
 
 // static void loadQuickSelect () {
