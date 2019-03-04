@@ -15,13 +15,18 @@ static NSInteger appSection;
 static NSInteger appId;
 
 static UIColor *defaultColor;
+static CIImage *newImage;
 
 // -- v1.0.2 - fixed version issue (http://redd.it/2xmdng) --
 
 // issue: opening app drawer, then beginning to type then opening an app fucks everything up
 // possible fix: check if user is typing, if so hide it
 
-// issue: Quick Reply doesn't function (no clue why)
+// -- v1.0.2 - magically fixed itself --
+// issue: Quick Reply doesn't function (no clue why) [its fixed?]
+
+// issue: Opening 'More' app causes graphical bugs
+// temp. fix: the user can swipe out of the conversation and come back in
 
 // --
 
@@ -80,20 +85,17 @@ static void initTweak () {
 		[self browserButtonTapped:self.browserButton];
 	}
 
-	// -- possible code to change image --
-	// issue: crashes when trying to set the image of the browserButton to newImage, but works fine when setting it to nil
-	// [[cell browserImage] image]] returns a CIImage but converting it to UIImage doesnt seem to fix it
-	// if ([self appStrip] != nil) {
-	// 	NSIndexPath *appIndex = [[NSIndexPath indexPathForRow:appId inSection:appSection] retain];
-	// 	CKBrowserPluginCell *cell = [[self appStrip] collectionView:[[self appStrip] collectionView] cellForItemAtIndexPath:appIndex];
-	// 	if ([cell browserImage] != nil) {
-	// 		//self.backgroundColor = [UIColor redColor];
-	// 		if ([self browserButton] != nil) {
-	// 			UIImage *newImage = [[UIImage alloc] initWithCIImage:[[cell browserImage] image]];
-	// 			[self.browserButton setImage:newImage forState:UIControlStateNormal];
-	// 		}
-	// 	}
-	// }
+	// Change Browser Button Image to Quick Select App Image
+	// issue: looks like a solid oval
+	if ([self appStrip] != nil) {
+		NSIndexPath *appIndex = [[NSIndexPath indexPathForRow:appId inSection:appSection] retain];
+		CKBrowserPluginCell *cell = [[self appStrip] collectionView:[[self appStrip] collectionView] cellForItemAtIndexPath:appIndex];
+		if ([[cell browserImage] image] != nil) {
+			if ([self browserButton] != nil) {
+				newImage = [[cell browserImage] image];
+			}
+		}
+	}
 }
 
 - (void) browserButtonTapped:(id)arg1 {
@@ -126,7 +128,6 @@ static void initTweak () {
 			stripOpen = false;
 			openWhenDown = false;
 		} else {
-			// IDK what fixed that issue, because that 'fix' was commented out and it was still fixed
 			if ([[self.browserButton ckTintColor] isEqual:defaultColor]) {
 				NSIndexPath *appIndex = [[NSIndexPath indexPathForRow:appId inSection:appSection] retain];
 				[[self appStrip] collectionView:[[self appStrip] collectionView] didSelectItemAtIndexPath:appIndex];
@@ -158,6 +159,19 @@ static void initTweak () {
 		// for reference: camera button id
 		//else if ([self entryViewButtonType] == 0) { } // Camera Button
 	}
+}
+
+// -- Successfully changes image (but tint covers it to be a solid oval)
+- (id) _generateBackdropMaskImage {
+	if (self.entryViewButtonType == 2) {
+		return nil;
+	} else return %orig;
+}
+
+- (void) setImage:(id)arg1 forState:(id)arg2 {
+	if (self.entryViewButtonType == 2) {
+		return %orig(newImage, arg2);
+	} else return %orig;
 }
 
 - (void) touchesEnded:(id)arg1 withEvent:(id)arg2 {
