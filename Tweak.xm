@@ -15,8 +15,8 @@ static NSInteger appSection;
 static NSInteger appId;
 
 static UIColor *defaultColor;
-
 static UIImage *icon;
+
 // -- v1.0.2 - fixed version issue (http://redd.it/2xmdng) --
 
 // issue: opening app drawer, then beginning to type then opening an app fucks everything up
@@ -38,6 +38,7 @@ static void initTweak () {
 	appSection = 0;
 	appId = 0;
 
+	// -- v1.0.2 - Fixed sync issue where tweak thinks app strip is closed when its open
 	CFPreferencesSetAppValue(CFSTR("AppStripEnabled"), kCFBooleanFalse, CFSTR("com.apple.MobileSMS"));
 	CFPreferencesAppSynchronize(CFSTR("com.apple.MobileSMS"));
 	CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(), CFSTR("com.apple.MobileSMS.AppStripEnabled"), NULL, NULL, TRUE);
@@ -85,6 +86,7 @@ static void initTweak () {
 		[self browserButtonTapped:self.browserButton];
 	}
 
+	// -- v1.0.2 - Changes the Image of the Browser Button --
 	if ([self appStrip] != nil && [self browserButton] != nil) {
 		NSIndexPath *appIndex = [[NSIndexPath indexPathForRow:appId inSection:appSection] retain];
 		CKBrowserPluginCell *cell = [[self appStrip] collectionView:[[self appStrip] collectionView] cellForItemAtIndexPath:appIndex];
