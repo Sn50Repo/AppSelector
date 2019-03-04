@@ -15,14 +15,16 @@ static NSInteger appSection;
 static NSInteger appId;
 
 static UIColor *defaultColor;
-
-static UIImage *icon;
-// -- v1.0.2 - fixed version issue (http://redd.it/2xmdng) --
+static CIImage *newImage;
 
 // issue: opening app drawer, then beginning to type then opening an app fucks everything up
 // possible fix: check if user is typing, if so hide it
 
-// issue: Quick Reply doesn't function (no clue why)
+// -- v1.0.2 - magically fixed itself --
+// issue: Quick Reply doesn't function (no clue why) [its fixed?]
+
+// issue: Opening 'More' app causes graphical bugs
+// temp. fix: the user can swipe out of the conversation and come back in
 
 // --
 
@@ -84,7 +86,7 @@ static void initTweak () {
 	if (stripOpen && appOpen) {
 		[self browserButtonTapped:self.browserButton];
 	}
-
+  
 	if ([self appStrip] != nil && [self browserButton] != nil) {
 		NSIndexPath *appIndex = [[NSIndexPath indexPathForRow:appId inSection:appSection] retain];
 		CKBrowserPluginCell *cell = [[self appStrip] collectionView:[[self appStrip] collectionView] cellForItemAtIndexPath:appIndex];
@@ -122,7 +124,6 @@ static void initTweak () {
 			stripOpen = false;
 			openWhenDown = false;
 		} else {
-			// IDK what fixed that issue, because that 'fix' was commented out and it was still fixed
 			if ([[self.browserButton ckTintColor] isEqual:defaultColor]) {
 				NSIndexPath *appIndex = [[NSIndexPath indexPathForRow:appId inSection:appSection] retain];
 				[[self appStrip] collectionView:[[self appStrip] collectionView] didSelectItemAtIndexPath:appIndex];
