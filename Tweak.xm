@@ -16,6 +16,7 @@ static NSInteger appId;
 
 static UIColor *defaultColor;
 
+static UIImage *icon;
 // -- v1.0.2 - fixed version issue (http://redd.it/2xmdng) --
 
 // issue: opening app drawer, then beginning to type then opening an app fucks everything up
@@ -84,20 +85,11 @@ static void initTweak () {
 		[self browserButtonTapped:self.browserButton];
 	}
 
-	// -- possible code to change image --
-	// issue: crashes when trying to set the image of the browserButton to newImage, but works fine when setting it to nil
-	// [[cell browserImage] image]] returns a CIImage but converting it to UIImage doesnt seem to fix it
-	// if ([self appStrip] != nil) {
-	// 	NSIndexPath *appIndex = [[NSIndexPath indexPathForRow:appId inSection:appSection] retain];
-	// 	CKBrowserPluginCell *cell = [[self appStrip] collectionView:[[self appStrip] collectionView] cellForItemAtIndexPath:appIndex];
-	// 	if ([cell browserImage] != nil) {
-	// 		//self.backgroundColor = [UIColor redColor];
-	// 		if ([self browserButton] != nil) {
-	// 			UIImage *newImage = [[UIImage alloc] initWithCIImage:[[cell browserImage] image]];
-	// 			[self.browserButton setImage:newImage forState:UIControlStateNormal];
-	// 		}
-	// 	}
-	// }
+	if ([self appStrip] != nil && [self browserButton] != nil) {
+		NSIndexPath *appIndex = [[NSIndexPath indexPathForRow:appId inSection:appSection] retain];
+		CKBrowserPluginCell *cell = [[self appStrip] collectionView:[[self appStrip] collectionView] cellForItemAtIndexPath:appIndex];
+		icon = cell.browserImage.image;
+	}
 }
 
 - (void) browserButtonTapped:(id)arg1 {
@@ -143,6 +135,19 @@ static void initTweak () {
 %end
 
 %hook CKEntryViewButton
++ (id) buttonWithType:(long long)arg1 {
+	return %orig(UIButtonTypeCustom);
+}
+
+- (void) layoutSubviews {
+	%orig;
+
+	if (self.entryViewButtonType == 2 && icon) {
+		[self setImage:icon forState:UIControlStateNormal];
+		[self setBounds:CGRectMake(self.bounds.origin.x, self.bounds.origin.y, 40, 30)];
+	}
+}
+
 - (void) touchesMoved:(id)arg1 withEvent:(id)arg2 {
 	%orig;
 
