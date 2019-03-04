@@ -15,7 +15,7 @@ static NSInteger appSection;
 static NSInteger appId;
 
 static UIColor *defaultColor;
-static CIImage *newImage;
+static UIImage *icon;
 
 // issue: opening app drawer, then beginning to type then opening an app fucks everything up
 // possible fix: check if user is typing, if so hide it
