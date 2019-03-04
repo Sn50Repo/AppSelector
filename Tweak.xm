@@ -15,9 +15,7 @@ static NSInteger appSection;
 static NSInteger appId;
 
 static UIColor *defaultColor;
-// static CIImage *newImage;
-
-// -- v1.0.2 - fixed version issue (http://redd.it/2xmdng) --
+static CIImage *newImage;
 
 // issue: opening app drawer, then beginning to type then opening an app fucks everything up
 // possible fix: check if user is typing, if so hide it
@@ -87,15 +85,15 @@ static void initTweak () {
 
 	// Change Browser Button Image to Quick Select App Image
 	// issue: looks like a solid oval
-	// if ([self appStrip] != nil) {
-	// 	NSIndexPath *appIndex = [[NSIndexPath indexPathForRow:appId inSection:appSection] retain];
-	// 	CKBrowserPluginCell *cell = [[self appStrip] collectionView:[[self appStrip] collectionView] cellForItemAtIndexPath:appIndex];
-	// 	if ([[cell browserImage] image] != nil) {
-	// 		if ([self browserButton] != nil) {
-	// 			newImage = [[cell browserImage] image];
-	// 		}
-	// 	}
-	// }
+	if ([self appStrip] != nil) {
+		NSIndexPath *appIndex = [[NSIndexPath indexPathForRow:appId inSection:appSection] retain];
+		CKBrowserPluginCell *cell = [[self appStrip] collectionView:[[self appStrip] collectionView] cellForItemAtIndexPath:appIndex];
+		if ([[cell browserImage] image] != nil) {
+			if ([self browserButton] != nil) {
+				newImage = [[cell browserImage] image];
+			}
+		}
+	}
 }
 
 - (void) browserButtonTapped:(id)arg1 {
@@ -160,19 +158,6 @@ static void initTweak () {
 		//else if ([self entryViewButtonType] == 0) { } // Camera Button
 	}
 }
-
-// -- Successfully changes image (but tint covers it to be a solid oval)
-// - (id) _generateBackdropMaskImage {
-// 	if (self.entryViewButtonType == 2) {
-// 		return nil;
-// 	} else return %orig;
-// }
-
-// - (void) setImage:(id)arg1 forState:(id)arg2 {
-// 	if (self.entryViewButtonType == 2) {
-// 		return %orig(newImage, arg2);
-// 	} else return %orig;
-// }
 
 - (void) touchesEnded:(id)arg1 withEvent:(id)arg2 {
 	%orig;
