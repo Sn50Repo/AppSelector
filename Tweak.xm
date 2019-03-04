@@ -39,6 +39,10 @@ static void initTweak () {
 
 	appSection = 0;
 	appId = 0;
+
+	CFPreferencesSetAppValue(CFSTR("AppStripEnabled"), kCFBooleanFalse, CFSTR("com.apple.MobileSMS"));
+	CFPreferencesAppSynchronize(CFSTR("com.apple.MobileSMS"));
+	CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(), CFSTR("com.apple.MobileSMS.AppStripEnabled"), NULL, NULL, TRUE);
 }
 
 // static void loadQuickSelect () {
@@ -82,17 +86,11 @@ static void initTweak () {
 	if (stripOpen && appOpen) {
 		[self browserButtonTapped:self.browserButton];
 	}
-
-	// Change Browser Button Image to Quick Select App Image
-	// issue: looks like a solid oval
-	if ([self appStrip] != nil) {
+  
+	if ([self appStrip] != nil && [self browserButton] != nil) {
 		NSIndexPath *appIndex = [[NSIndexPath indexPathForRow:appId inSection:appSection] retain];
 		CKBrowserPluginCell *cell = [[self appStrip] collectionView:[[self appStrip] collectionView] cellForItemAtIndexPath:appIndex];
-		if ([[cell browserImage] image] != nil) {
-			if ([self browserButton] != nil) {
-				newImage = [[cell browserImage] image];
-			}
-		}
+		icon = cell.browserImage.image;
 	}
 }
 
@@ -138,6 +136,19 @@ static void initTweak () {
 %end
 
 %hook CKEntryViewButton
++ (id) buttonWithType:(long long)arg1 {
+	return %orig(UIButtonTypeCustom);
+}
+
+- (void) layoutSubviews {
+	%orig;
+
+	if (self.entryViewButtonType == 2 && icon) {
+		[self setImage:icon forState:UIControlStateNormal];
+		[self setBounds:CGRectMake(self.bounds.origin.x, self.bounds.origin.y, 40, 30)];
+	}
+}
+
 - (void) touchesMoved:(id)arg1 withEvent:(id)arg2 {
 	%orig;
 
