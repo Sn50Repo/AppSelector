@@ -17,6 +17,8 @@ static NSInteger appId;
 static UIColor *defaultColor;
 static UIImage *icon;
 
+static NSString *bundleId;
+
 // issue: opening app drawer, then beginning to type then opening an app fucks everything up
 // possible fix: check if user is typing, if so hide it
 
@@ -64,32 +66,34 @@ static void initTweak () {
 - (void) layoutSubviews {
 	%orig;
 
-	// issue: Causes Quick Reply to not work #6
-	// Resets defaultColor when appStrip is nil. This is used for when the user switches chats and defaultColor is already set
-	// if ([self appStrip] == nil && defaultColor != nil) {
-	// 	defaultColor = nil;
-	// }
+	// -- v1.0.3 - fixed Quick Reply bug --
+	if ([bundleId isEqualToString:@"com.apple.MobileSMS"]) {
+		// Resets defaultColor when appStrip is nil. This is used for when the user switches chats and defaultColor is already set
+		if ([self appStrip] == nil && defaultColor != nil) {
+			defaultColor = nil;
+		}
 
-	// Setup
-	if (defaultColor == nil) {
-		[self browserButtonTapped:self.browserButton];
-	}
+		// Setup
+		if (defaultColor == nil) {
+			[self browserButtonTapped:self.browserButton];
+		}
 
-	// Called when user swipes down with app strip still open
-	if (![self isKeyboardVisible] && stripOpen && !appOpen && !openWhenDown) {
-		[self browserButtonTapped:self.browserButton];
-	}
+		// Called when user swipes down with app strip still open
+		if (![self isKeyboardVisible] && stripOpen && !appOpen && !openWhenDown) {
+			[self browserButtonTapped:self.browserButton];
+		}
 
-	// Called when app strip is open and an app is selected
-	if (stripOpen && appOpen) {
-		[self browserButtonTapped:self.browserButton];
-	}
-  
-  	// Set Browser Button Image
-	if ([self appStrip] != nil && [self browserButton] != nil) {
-		NSIndexPath *appIndex = [[NSIndexPath indexPathForRow:appId inSection:appSection] retain];
-		CKBrowserPluginCell *cell = [[self appStrip] collectionView:[[self appStrip] collectionView] cellForItemAtIndexPath:appIndex];
-		icon = cell.browserImage.image;
+		// Called when app strip is open and an app is selected
+		if (stripOpen && appOpen) {
+			[self browserButtonTapped:self.browserButton];
+		}
+	  
+	  	// Set Browser Button Image
+		if ([self appStrip] != nil && [self browserButton] != nil) {
+			NSIndexPath *appIndex = [[NSIndexPath indexPathForRow:appId inSection:appSection] retain];
+			CKBrowserPluginCell *cell = [[self appStrip] collectionView:[[self appStrip] collectionView] cellForItemAtIndexPath:appIndex];
+			icon = cell.browserImage.image;
+		}
 	}
 }
 
@@ -193,7 +197,7 @@ static void initTweak () {
 
 %ctor {
 	@autoreleasepool {
-		NSString *bundleId = NSBundle.mainBundle.bundleIdentifier;
+		bundleId = NSBundle.mainBundle.bundleIdentifier;
 
 		if ([bundleId isEqualToString:@"com.apple.MobileSMS"]) {
 			initTweak();
