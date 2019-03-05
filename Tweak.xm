@@ -20,9 +20,6 @@ static UIImage *icon;
 // issue: opening app drawer, then beginning to type then opening an app fucks everything up
 // possible fix: check if user is typing, if so hide it
 
-// -- v1.0.2 - magically fixed itself --
-// issue: Quick Reply doesn't function (no clue why) [its fixed?]
-
 // issue: Opening 'More' app causes graphical bugs
 // temp. fix: the user can swipe out of the conversation and come back in
 
@@ -67,10 +64,11 @@ static void initTweak () {
 - (void) layoutSubviews {
 	%orig;
 
+	// issue: Causes Quick Reply to not work #6
 	// Resets defaultColor when appStrip is nil. This is used for when the user switches chats and defaultColor is already set
-	if ([self appStrip] == nil && defaultColor != nil) {
-		defaultColor = nil;
-	}
+	// if ([self appStrip] == nil && defaultColor != nil) {
+	// 	defaultColor = nil;
+	// }
 
 	// Setup
 	if (defaultColor == nil) {
@@ -87,6 +85,7 @@ static void initTweak () {
 		[self browserButtonTapped:self.browserButton];
 	}
   
+  	// Set Browser Button Image
 	if ([self appStrip] != nil && [self browserButton] != nil) {
 		NSIndexPath *appIndex = [[NSIndexPath indexPathForRow:appId inSection:appSection] retain];
 		CKBrowserPluginCell *cell = [[self appStrip] collectionView:[[self appStrip] collectionView] cellForItemAtIndexPath:appIndex];
@@ -152,7 +151,6 @@ static void initTweak () {
 - (void) touchesMoved:(id)arg1 withEvent:(id)arg2 {
 	%orig;
 
-	// -- v1.0.2 - removed force touch from camera button
 	if ([self entryViewButtonType] != 2) { return; }// App Button
 
 	UITouch *touch = [arg1 anyObject];
