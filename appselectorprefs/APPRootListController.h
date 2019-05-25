@@ -1,4 +1,4 @@
-#import <Preferences/PSListController.h>
+#import <CepheiPrefs/HBRootListController.h>
 
-@interface APPRootListController : PSListController
+@interface APPRootListController: HBRootListController
 @end
