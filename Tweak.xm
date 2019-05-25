@@ -1,7 +1,7 @@
 #import "CKMessageEntryView.h"
 #import <AudioToolbox/AudioToolbox.h>
-#import "AppSelector.h"
 #import "CKBrowserPluginCell.h"
+#import "SettingsReader.h"
 
 static BOOL openStrip;
 static BOOL stripOpen;
@@ -16,16 +16,6 @@ static NSInteger appId;
 
 static UIColor *defaultColor;
 static UIImage *icon;
-
-static NSString *bundleId;
-
-// issue: opening app drawer, then beginning to type then opening an app fucks everything up
-// possible fix: check if user is typing, if so hide it
-
-// issue: Opening 'More' app causes graphical bugs
-// temp. fix: the user can swipe out of the conversation and come back in
-
-// --
 
 static void initTweak () {
 	openStrip = false;
@@ -44,95 +34,127 @@ static void initTweak () {
 	CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(), CFSTR("com.apple.MobileSMS.AppStripEnabled"), NULL, NULL, TRUE);
 }
 
-// static void loadQuickSelect () {
-// 	NSDictionary *settings = [NSMutableDictionary dictionaryWithContentsOfFile:kPrefsPlistPath];
-// 	appSection = settings[@"DefaultSection"] ?: 0;
-// 	appId = settings[@"DefaultId"] ?: 0;
-// }
-
-// static void saveAppInfo () {
-// 	settings[@"DefaultSection"] = appSection;
-// 	settings[@"DefaultId"] = appId;
-// 	[settings writeToFile:kPrefsPlistPath atomically:YES];
-// }
-
-// --
-
 %hook CKMessageEntryView
-+ (id) sharedInstance {
-	return %orig;
-}
-
 - (void) layoutSubviews {
 	%orig;
 
-	// -- v1.0.3 - fixed Quick Reply bug --
-	if ([bundleId isEqualToString:@"com.apple.MobileSMS"]) {
-		// Resets defaultColor when appStrip is nil. This is used for when the user switches chats and defaultColor is already set
-		if ([self appStrip] == nil && defaultColor != nil) {
-			defaultColor = nil;
-		}
+	// Resets defaultColor when appStrip is nil. This is used for when the user switches chats and defaultColor is already set
+	if ([self appStrip] == nil && defaultColor != nil) {
+		defaultColor = nil;
+	}
 
-		// Setup
-		if (defaultColor == nil) {
-			[self browserButtonTapped:self.browserButton];
-		}
+	// Setup
+	if (defaultColor == nil) {
+		[self browserButtonTapped:self.browserButton];
+	}
 
-		// Called when user swipes down with app strip still open
-		if (![self isKeyboardVisible] && stripOpen && !appOpen && !openWhenDown) {
-			[self browserButtonTapped:self.browserButton];
-		}
+	NSString* functionType = [SettingsReader getObject:@"function"];
+	if (![functionType isEqual:@"default"]) { return; }
 
-		// Called when app strip is open and an app is selected
-		if (stripOpen && appOpen) {
-			[self browserButtonTapped:self.browserButton];
+	// Called when user swipes down with app strip still open
+	if (![self isKeyboardVisible] && stripOpen && !appOpen && !openWhenDown) {
+		[self browserButtonTapped:self.browserButton];
+	}
+
+	// Called when app strip is open and an app is selected
+	if (stripOpen && appOpen) {
+		[self browserButtonTapped:self.browserButton];
+	}
+  
+  	// Set Browser Button Image
+	if ([self appStrip] != nil && [self browserButton] != nil) {
+		NSIndexPath *appIndex = [NSIndexPath indexPathForRow:appId inSection:appSection];
+		CKBrowserPluginCell *cell = [[self appStrip] collectionView:[[self appStrip] collectionView] cellForItemAtIndexPath:appIndex];
+		icon = cell.browserImage.image;
+	}
+
+	// -- v1.0.4 - Fixes issues causes by leaving the app strip open and beginning to type
+	if ([self isSendingMessage] && stripOpen) {
+		[self browserButtonTapped:self.browserButton];
+	}
+}
+
+- (void) photoButtonTapped:(id)arg1 {
+	NSString* functionType = [SettingsReader getObject:@"function"];
+	if ([functionType isEqual:@"camera"]) {
+		if (openStrip) {
+			openStrip = false;
+			%orig;
+		} else {
+			
+			if ([[self.browserButton ckTintColor] isEqual:defaultColor]) {
+				NSIndexPath *appIndex = [NSIndexPath indexPathForRow:appId inSection:appSection];
+				[[self appStrip] collectionView:[[self appStrip] collectionView] didSelectItemAtIndexPath:appIndex];
+			} else {
+				[self browserButtonTapped:self.browserButton];
+			}
+
 		}
-	  
-	  	// Set Browser Button Image
-		if ([self appStrip] != nil && [self browserButton] != nil) {
-			NSIndexPath *appIndex = [[NSIndexPath indexPathForRow:appId inSection:appSection] retain];
-			CKBrowserPluginCell *cell = [[self appStrip] collectionView:[[self appStrip] collectionView] cellForItemAtIndexPath:appIndex];
-			icon = cell.browserImage.image;
+	} else if ([functionType isEqual:@"force"]) {
+		if (openStrip) {
+			openStrip = false;
+			
+			NSIndexPath *appIndex = [NSIndexPath indexPathForRow:appId inSection:appSection];
+			[[self appStrip] collectionView:[[self appStrip] collectionView] didSelectItemAtIndexPath:appIndex];
+		} else {
+			if (![[self.browserButton ckTintColor] isEqual:defaultColor]) {
+				[self browserButtonTapped:self.browserButton];
+			} else {
+				%orig;
+			}
 		}
+	} else {
+		%orig;
 	}
 }
 
 - (void) browserButtonTapped:(id)arg1 {
-	// Handle auto closing App Drawer when selecting an app
-	if (stripOpen && appOpen) {
-		stripOpen = false;
-		appOpen = false;
-
-		%orig;
-
-		NSIndexPath *appIndex = [[NSIndexPath indexPathForRow:appId inSection:appSection] retain];
-		[[self appStrip] collectionView:[[self appStrip] collectionView] didSelectItemAtIndexPath:appIndex];
-
-		return;
-	}
-
-	if (defaultColor == nil) {
-		defaultColor = [self.browserButton ckTintColor];
-		%orig;
-		%orig;
-	} else {
-		if (openStrip) {
-			if (![self isKeyboardVisible]) openWhenDown = true;
-
-			%orig;
-			openStrip = false;
-			stripOpen = true;
-		} else if (stripOpen) {
-			%orig;
+	NSString* functionType = [SettingsReader getObject:@"function"];
+	if ([functionType isEqual:@"default"]) {
+		// Handle auto closing App Drawer when selecting an app
+		if (stripOpen && appOpen) {
 			stripOpen = false;
-			openWhenDown = false;
+			appOpen = false;
+
+			%orig;
+
+			NSIndexPath *appIndex = [NSIndexPath indexPathForRow:appId inSection:appSection];
+			[[self appStrip] collectionView:[[self appStrip] collectionView] didSelectItemAtIndexPath:appIndex];
+
+			return;
+		}
+
+		if (defaultColor == nil) {
+			defaultColor = [self.browserButton ckTintColor];
+			%orig; // find a way to remove one of these
+			%orig;
 		} else {
-			if ([[self.browserButton ckTintColor] isEqual:defaultColor]) {
-				NSIndexPath *appIndex = [[NSIndexPath indexPathForRow:appId inSection:appSection] retain];
-				[[self appStrip] collectionView:[[self appStrip] collectionView] didSelectItemAtIndexPath:appIndex];
-			} else {
+			if (openStrip) {
+				if (![self isKeyboardVisible]) openWhenDown = true;
+
 				%orig;
+				openStrip = false;
+				stripOpen = true;
+			} else if (stripOpen) {
+				%orig;
+				stripOpen = false;
+				openWhenDown = false;
+			} else {
+				if ([[self.browserButton ckTintColor] isEqual:defaultColor]) {
+					NSIndexPath *appIndex = [NSIndexPath indexPathForRow:appId inSection:appSection];
+					[[self appStrip] collectionView:[[self appStrip] collectionView] didSelectItemAtIndexPath:appIndex];
+				} else {
+					%orig;
+				}
 			}
+		}
+	} else {
+		if (defaultColor == nil) {
+			defaultColor = [self.browserButton ckTintColor];
+			%orig; // find a way to remove one of these
+			%orig;
+		} else {
+			%orig;
 		}
 	}
 }
@@ -155,7 +177,9 @@ static void initTweak () {
 - (void) touchesMoved:(id)arg1 withEvent:(id)arg2 {
 	%orig;
 
-	if ([self entryViewButtonType] != 2) { return; }// App Button
+	NSString* functionType = [SettingsReader getObject:@"function"];
+	if ([self entryViewButtonType] == 2 && ![functionType isEqual:@"default"]) { return; } // App Button
+	if ([self entryViewButtonType] == 0 && [functionType isEqual:@"default"]) { return; } // Camera
 
 	UITouch *touch = [arg1 anyObject];
 
@@ -166,23 +190,24 @@ static void initTweak () {
 	if (normalizedForce >= 0.75 && !pressed) {
 		pressed = true;
 		AudioServicesPlaySystemSound(1519);
+
 		if (!stripOpen && [[self ckTintColor] isEqual:defaultColor]) openStrip = true;
-		// for reference: camera button id
-		//else if ([self entryViewButtonType] == 0) { } // Camera Button
 	}
 }
 
 - (void) touchesEnded:(id)arg1 withEvent:(id)arg2 {
-	%orig;
 	pressed = false;
+	%orig;
 }
 %end
 
 %hook CKBrowserSwitcherFooterView
-- (void) collectionView:(id)arg1 didSelectItemAtIndexPath:(id)arg2 {
-	NSIndexPath *index = (NSIndexPath*)arg2;
-	appSection = index.section;
-	appId = index.row;
+- (void) collectionView:(id)arg1 didSelectItemAtIndexPath:(NSIndexPath*)index {
+	// if quick select is enabled, set the app to the last opened one
+	if ([SettingsReader getBool:@"quick"] && [[SettingsReader getObject:@"function"] isEqual:@"default"]) {
+		appSection = index.section;
+		appId = index.row;
+	}
 
 	if (stripOpen) {
 		%orig(nil, nil);
@@ -196,11 +221,22 @@ static void initTweak () {
 %end
 
 %ctor {
+	// -- v1.0.4 - Tames the beast (http://redd.it/4za4n1) Stops AppSelector from injecting itself anywhere else except iMessage --
 	@autoreleasepool {
-		bundleId = NSBundle.mainBundle.bundleIdentifier;
+		NSArray *args = [[NSClassFromString(@"NSProcessInfo") processInfo] arguments];
+		NSUInteger count = args.count;
+		if (count != 0) {
+			NSString *executablePath = args[0];
+			if (executablePath) {
+				NSString *processName = [executablePath lastPathComponent];
+				BOOL isSpringBoard = [processName isEqualToString:@"SpringBoard"];
+				BOOL isApplication = [executablePath rangeOfString:@"/Application/"].location != NSNotFound || [executablePath rangeOfString:@"/Applications/"].location != NSNotFound;
 
-		if ([bundleId isEqualToString:@"com.apple.MobileSMS"]) {
-			initTweak();
+				if ((isSpringBoard || isApplication) && [processName isEqualToString:@"MobileSMS"] && [SettingsReader getBool:@"enabled"]) {
+					%init;
+					initTweak();
+				}
+			}
 		}
 	}
 }
