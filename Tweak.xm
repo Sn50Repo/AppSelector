@@ -232,7 +232,7 @@ static void initTweak () {
 				BOOL isSpringBoard = [processName isEqualToString:@"SpringBoard"];
 				BOOL isApplication = [executablePath rangeOfString:@"/Application/"].location != NSNotFound || [executablePath rangeOfString:@"/Applications/"].location != NSNotFound;
 
-				if ((isSpringBoard || isApplication) && [processName isEqualToString:@"MobileSMS"] && [SettingsReader getBool:@"enabled"]) {
+				if ((isSpringBoard || isApplication) && [processName isEqualToString:@"MobileSMS"]) { // && [SettingsReader getBool:@"enabled"]) {
 					%init;
 					initTweak();
 				}
