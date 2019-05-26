@@ -121,6 +121,11 @@ static void initTweak () {
 			NSIndexPath *appIndex = [NSIndexPath indexPathForRow:appId inSection:appSection];
 			[[self appStrip] collectionView:[[self appStrip] collectionView] didSelectItemAtIndexPath:appIndex];
 
+			if (![SettingsReader getBool:@"quick"]) {
+				appId = 0;
+				appSection = 0;
+			}
+
 			return;
 		}
 
@@ -143,6 +148,12 @@ static void initTweak () {
 				if ([[self.browserButton ckTintColor] isEqual:defaultColor]) {
 					NSIndexPath *appIndex = [NSIndexPath indexPathForRow:appId inSection:appSection];
 					[[self appStrip] collectionView:[[self appStrip] collectionView] didSelectItemAtIndexPath:appIndex];
+
+					if (![SettingsReader getBool:@"quick"]) {
+						appId = 0;
+						appSection = 0;
+					}
+
 				} else {
 					%orig;
 				}
@@ -203,8 +214,7 @@ static void initTweak () {
 
 %hook CKBrowserSwitcherFooterView
 - (void) collectionView:(id)arg1 didSelectItemAtIndexPath:(NSIndexPath*)index {
-	// if quick select is enabled, set the app to the last opened one
-	if ([SettingsReader getBool:@"quick"] && [[SettingsReader getObject:@"function"] isEqual:@"default"]) {
+	if ([[SettingsReader getObject:@"function"] isEqual:@"default"]) {
 		appSection = index.section;
 		appId = index.row;
 	}
