@@ -6,5 +6,5 @@ static NSDictionary *storage;
 + (NSDictionary*) dictionary;
 
 + (NSString*) getObject:(NSString*)key;
-+ (BOOL) getBool:(NSString*)key;
++ (BOOL) getBool:(NSString*)key default:(BOOL)value;
 @end

@@ -48,7 +48,7 @@ static void initTweak () {
 		[self browserButtonTapped:self.browserButton];
 	}
 
-	NSString* functionType = [SettingsReader getObject:@"function"];
+	NSString* functionType = [SettingsReader getObject:@"function"] ?: @"default";
 	if (![functionType isEqual:@"default"]) { return; }
 
 	// Called when user swipes down with app strip still open
@@ -68,14 +68,20 @@ static void initTweak () {
 		icon = cell.browserImage.image;
 	}
 
-	// -- v1.0.4 - Fixes issues causes by leaving the app strip open and beginning to type
+	// close app strip when typing
 	if ([self isSendingMessage] && stripOpen) {
 		[self browserButtonTapped:self.browserButton];
 	}
 }
 
+- (void)photoButtonTouchDown:(id)arg1 {
+	if (openStrip) {
+		%orig;
+	}
+}
+
 - (void) photoButtonTapped:(id)arg1 {
-	NSString* functionType = [SettingsReader getObject:@"function"];
+	NSString* functionType = [SettingsReader getObject:@"function"] ?: @"default";
 	if ([functionType isEqual:@"camera"]) {
 		if (openStrip) {
 			openStrip = false;
@@ -88,7 +94,6 @@ static void initTweak () {
 			} else {
 				[self browserButtonTapped:self.browserButton];
 			}
-
 		}
 	} else if ([functionType isEqual:@"force"]) {
 		if (openStrip) {
@@ -109,7 +114,8 @@ static void initTweak () {
 }
 
 - (void) browserButtonTapped:(id)arg1 {
-	NSString* functionType = [SettingsReader getObject:@"function"];
+	BOOL quickBoi = [SettingsReader getBool:@"quick" default:YES];
+	NSString* functionType = [SettingsReader getObject:@"function"] ?: @"default";
 	if ([functionType isEqual:@"default"]) {
 		// Handle auto closing App Drawer when selecting an app
 		if (stripOpen && appOpen) {
@@ -121,7 +127,7 @@ static void initTweak () {
 			NSIndexPath *appIndex = [NSIndexPath indexPathForRow:appId inSection:appSection];
 			[[self appStrip] collectionView:[[self appStrip] collectionView] didSelectItemAtIndexPath:appIndex];
 
-			if (![SettingsReader getBool:@"quick"]) {
+			if (!quickBoi) {
 				appId = 0;
 				appSection = 0;
 			}
@@ -149,7 +155,7 @@ static void initTweak () {
 					NSIndexPath *appIndex = [NSIndexPath indexPathForRow:appId inSection:appSection];
 					[[self appStrip] collectionView:[[self appStrip] collectionView] didSelectItemAtIndexPath:appIndex];
 
-					if (![SettingsReader getBool:@"quick"]) {
+					if (!quickBoi) {
 						appId = 0;
 						appSection = 0;
 					}
@@ -188,7 +194,7 @@ static void initTweak () {
 - (void) touchesMoved:(id)arg1 withEvent:(id)arg2 {
 	%orig;
 
-	NSString* functionType = [SettingsReader getObject:@"function"];
+	NSString* functionType = [SettingsReader getObject:@"function"] ?: @"default";
 	if ([self entryViewButtonType] == 2 && ![functionType isEqual:@"default"]) { return; } // App Button
 	if ([self entryViewButtonType] == 0 && [functionType isEqual:@"default"]) { return; } // Camera
 
@@ -199,22 +205,31 @@ static void initTweak () {
 	CGFloat normalizedForce = force/maximumPossibleForce;
 
 	if (normalizedForce >= 0.75 && !pressed) {
-		pressed = true;
+		pressed = YES;
 		AudioServicesPlaySystemSound(1519);
 
-		if (!stripOpen && [[self ckTintColor] isEqual:defaultColor]) openStrip = true;
+		if (!stripOpen && [[self ckTintColor] isEqual:defaultColor]) openStrip = YES;
 	}
 }
 
-- (void) touchesEnded:(id)arg1 withEvent:(id)arg2 {
-	pressed = false;
+- (void) touchesCancelled:(id)arg1 withEvent:(id)arg2 {
+	openStrip = NO;
+	pressed = NO;
+
 	%orig;
+}
+
+- (void) touchesEnded:(id)arg1 withEvent:(id)arg2 {
+	%orig;
+	pressed = NO;
 }
 %end
 
 %hook CKBrowserSwitcherFooterView
 - (void) collectionView:(id)arg1 didSelectItemAtIndexPath:(NSIndexPath*)index {
-	if ([[SettingsReader getObject:@"function"] isEqual:@"default"]) {
+	
+	NSString* functionType = [SettingsReader getObject:@"function"] ?: @"default";
+	if ([functionType isEqual:@"default"]) {
 		appSection = index.section;
 		appId = index.row;
 	}
@@ -231,7 +246,7 @@ static void initTweak () {
 %end
 
 %ctor {
-	// -- v1.0.4 - Tames the beast (http://redd.it/4za4n1) Stops AppSelector from injecting itself anywhere else except iMessage --
+	// dont inject into Quick Reply
 	@autoreleasepool {
 		NSArray *args = [[NSClassFromString(@"NSProcessInfo") processInfo] arguments];
 		NSUInteger count = args.count;
@@ -241,8 +256,9 @@ static void initTweak () {
 				NSString *processName = [executablePath lastPathComponent];
 				BOOL isSpringBoard = [processName isEqualToString:@"SpringBoard"];
 				BOOL isApplication = [executablePath rangeOfString:@"/Application/"].location != NSNotFound || [executablePath rangeOfString:@"/Applications/"].location != NSNotFound;
+				BOOL enabled = [SettingsReader getBool:@"enabled" default:YES];
 
-				if ((isSpringBoard || isApplication) && [processName isEqualToString:@"MobileSMS"]) { // && [SettingsReader getBool:@"enabled"]) {
+				if ((isSpringBoard || isApplication) && [processName isEqualToString:@"MobileSMS"] && enabled) {
 					%init;
 					initTweak();
 				}
