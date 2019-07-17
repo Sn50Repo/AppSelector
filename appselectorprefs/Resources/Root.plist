@@ -42,6 +42,14 @@
 			<key>defaults</key> 			<string>com.kayfam.appselector</string>
 			<key>default</key> 				<true/>
 		</dict>
+		<!-- Use App Image -->
+		<dict>
+			<key>cell</key> 				<string>PSSwitchCell</string>
+			<key>label</key> 				<string>Use App Image</string>
+			<key>key</key> 					<string>image</string>
+			<key>defaults</key> 			<string>com.kayfam.appselector</string>
+			<key>default</key> 				<true/>
+		</dict>
 		<!-- Switch Quick Select App when a different app is opened -->
 		<dict>
 			<key>cell</key> 				<string>PSSwitchCell</string>

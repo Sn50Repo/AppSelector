@@ -10,6 +10,7 @@ static BOOL appOpen;
 static BOOL openWhenDown;
 
 static BOOL pressed;
+static BOOL useImage;
 
 static NSInteger appSection;
 static NSInteger appId;
@@ -62,7 +63,7 @@ static void initTweak () {
 	}
   
   	// Set Browser Button Image
-	if ([self appStrip] != nil && [self browserButton] != nil) {
+	if ([self appStrip] != nil && [self browserButton] != nil && useImage) {
 		NSIndexPath *appIndex = [NSIndexPath indexPathForRow:appId inSection:appSection];
 		CKBrowserPluginCell *cell = [[self appStrip] collectionView:[[self appStrip] collectionView] cellForItemAtIndexPath:appIndex];
 		icon = cell.browserImage.image;
@@ -182,15 +183,6 @@ static void initTweak () {
 	return %orig(UIButtonTypeCustom);
 }
 
-- (void) layoutSubviews {
-	%orig;
-
-	if (self.entryViewButtonType == 2 && icon) {
-		[self setImage:icon forState:UIControlStateNormal];
-		[self setBounds:CGRectMake(self.bounds.origin.x, self.bounds.origin.y, 40, 30)];
-	}
-}
-
 - (void) touchesMoved:(id)arg1 withEvent:(id)arg2 {
 	%orig;
 
@@ -245,11 +237,29 @@ static void initTweak () {
 }
 %end
 
+%group APSImage
+
+%hook CKEntryViewButton
+- (void) layoutSubviews {
+	%orig;
+
+	if (self.entryViewButtonType == 2 && icon) {
+		[self setImage:icon forState:UIControlStateNormal];
+		[self setBounds:CGRectMake(self.bounds.origin.x, self.bounds.origin.y, 40, 30)];
+	}
+}
+%end
+
+%end
+
+// todo: exclude tweak from running in "com.apple.MobileSMS.MessagesNotificationExtension"
 %ctor {
 	// dont inject into Quick Reply
 	@autoreleasepool {
 		NSArray *args = [[NSClassFromString(@"NSProcessInfo") processInfo] arguments];
 		NSUInteger count = args.count;
+		// NSLog(@"[APPSEL] Name: %@", [[NSClassFromString(@"NSProcessInfo") processInfo] processName]);
+
 		if (count != 0) {
 			NSString *executablePath = args[0];
 			if (executablePath) {
@@ -257,9 +267,17 @@ static void initTweak () {
 				BOOL isSpringBoard = [processName isEqualToString:@"SpringBoard"];
 				BOOL isApplication = [executablePath rangeOfString:@"/Application/"].location != NSNotFound || [executablePath rangeOfString:@"/Applications/"].location != NSNotFound;
 				BOOL enabled = [SettingsReader getBool:@"enabled" default:YES];
+				useImage = [SettingsReader getBool:@"image" default:YES];
+
+				NSLog(@"[APPSEL] Injecting into: %@", executablePath);
 
 				if ((isSpringBoard || isApplication) && [processName isEqualToString:@"MobileSMS"] && enabled) {
 					%init;
+
+					if (useImage) {
+						%init(APSImage);
+					}
+
 					initTweak();
 				}
 			}
